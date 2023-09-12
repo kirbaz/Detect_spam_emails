@@ -1,0 +1,68 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn import metrics
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+# Шаг 1: Загрузка и подготовка данных
+data = pd.read_csv('data.csv')  # Замените 'data.csv' на путь к вашему файлу данных
+X = data['text']  # Колонка с текстом email сообщений
+y = data['label']  # Колонка с метками (спам или не спам)
+
+# Шаг 2: Предварительная обработка данных
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+stop_words = set(stopwords.words('english'))  # Загрузка стоп-слов на английском языке
+lemmatizer = WordNetLemmatizer()  # Инициализация лемматизатора
+
+def preprocess_text(text):
+    text = text.lower()  # Приведение текста к нижнему регистру
+    words = nltk.word_tokenize(text)  # Токенизация текста на отдельные слова
+    words = [word for word in words if word.isalpha()]  # Удаление пунктуации
+    words = [word for word in words if word not in stop_words]  # Удаление стоп-слов
+    words = [lemmatizer.lemmatize(word) for word in words]  # Лемматизация слов
+    preprocessed_text = ' '.join(words)  # Объединение слов в предобработанный текст
+    return preprocessed_text
+
+X = X.apply(preprocess_text)
+
+# Шаг 3: Извлечение признаков
+vectorizer = CountVectorizer()  # Мешок слов
+X = vectorizer.fit_transform(X)
+
+# Шаг 4: Разделение данных
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Шаг 5: Обучение модели
+model = MultinomialNB()  # Наивный Байесовский классификатор
+model.fit(X_train, y_train)
+
+# Шаг 6: Оценка модели
+y_pred = model.predict(X_test)
+accuracy = metrics.accuracy_score(y_test, y_pred)
+precision = metrics.precision_score(y_test, y_pred, pos_label='spam')
+recall = metrics.recall_score(y_test, y_pred, pos_label='spam')
+f1_score = metrics.f1_score(y_test, y_pred, pos_label='spam')
+confusion_matrix = metrics.confusion_matrix(y_test, y_pred)
+
+print('Accuracy:', accuracy)
+print('Precision:', precision)
+print('Recall:', recall)
+print('F1 Score:', f1_score)
+print('Confusion Matrix:')
+print(confusion_matrix)
+
+# Шаг 7: Настройка модели (при необходимости)
+
+# Шаг 8: Использование модели для классификации новых email сообщений
+new_emails = ['Hello, you have won a prize!', 'Hi, can you please help with this issue?']
+new_emails_transformed = vectorizer.transform(new_emails)
+new_emails_pred = model.predict(new_emails_transformed)
+
+print('Predictions for new emails:')
+for email, label in zip(new_emails, new_emails_pred):
+    print(f'Email: {email}  Label: {label}')
